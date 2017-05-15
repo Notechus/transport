@@ -1,7 +1,4 @@
-//
-// Created by Sebastian Paulus on 15/05/2017.
-//
-
+//Sebastian Paulus 266446
 #include "packet.h"
 
 packet::packet(int status_, char *data_) :
