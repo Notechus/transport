@@ -4,11 +4,11 @@
 
 bool validateInput(int n, char **arguments);
 
-int processPacket(packet p, int currentStart, int currentLength, std::ofstream &file);
+int processPacket(const packet &p, int currentStart, int currentLength, std::ofstream &file);
 
-int validatePacket(packet p, int currentStart, int currentLength, std::ofstream &file);
+int validatePacket(const packet &p, int currentStart, int currentLength, std::ofstream &file);
 
-void writeToFile(std::string, std::ofstream &file);
+void writeToFile(const std::string &, std::ofstream &file);
 
 int serverPort;
 std::string outputFileName;
@@ -24,6 +24,8 @@ int main(int argc, char **argv) {
     }
     int bytesLeft = fileLength;
     int currentStart = 0;
+    int packetQuantity = (int) ceil(((double) fileLength) / FRAME_SIZE);
+    int progress = 1;
 
     udpsocket s(serverAddr, serverPort);
     if (s.run() < 0) {
@@ -38,13 +40,16 @@ int main(int argc, char **argv) {
     while (bytesLeft > 0) {
         int currentLength = bytesLeft >= FRAME_SIZE ? FRAME_SIZE : bytesLeft;
         int next = 0;
-        while (!next) {
-            int sent = s.sendPacket(currentStart, currentLength);
-            if (sent < 0) {
-                std::cerr << "The application will close." << std::endl;
-                return EXIT_FAILURE;
-            }
 
+        std::cout << "Receiving " << progress << " of " << packetQuantity << " fragments" << std::endl;
+
+        int sent = (int) s.sendPacket(currentStart, currentLength);
+        if (sent < 0) {
+            std::cerr << "The application will close." << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        while (!next) {
             packet p = s.getPacket();
             if (p.getStatus() < 0) {
                 std::cerr << "The application will close." << std::endl;
@@ -58,14 +63,15 @@ int main(int argc, char **argv) {
                 next = 1;
             }
         }
+        progress++;
     }
-
+    std::cout << "Done.\n";
     output.close();
 
     return 0;
 }
 
-int processPacket(packet p, int currentStart, int currentLength, std::ofstream &file) {
+int processPacket(const packet &p, int currentStart, int currentLength, std::ofstream &file) {
     // response is DATA start length \n
     if (p.getStatus() > 0) {
         if (validatePacket(p, currentStart, currentLength, file)) {
@@ -76,17 +82,17 @@ int processPacket(packet p, int currentStart, int currentLength, std::ofstream &
     return 0;
 }
 
-void writeToFile(std::string data, std::ofstream &file) {
+void writeToFile(const std::string &data, std::ofstream &file) {
     if (file.is_open()) {
         file << data;
     }
 }
 
-int validatePacket(packet p, int currentStart, int currentLength, std::ofstream &file) {
-    std::string packetData = p.getDataAsString();
+int validatePacket(const packet &p, int currentStart, int currentLength, std::ofstream &file) {
+    std::string packetData = p.getData();
     unsigned long first = packetData.find_first_of('\n');
     if (first > 0) {
-        std::string dataHeader = packetData.substr(5, first); // header minus 'DATA' word and space
+        std::string dataHeader = packetData.substr(5, first - 5); // header minus 'DATA '
         std::string dataContent = packetData.substr(first + 1, packetData.length() - 1); // data here if valid
         unsigned long space = dataHeader.find_first_of(' ');
         if (space > 0) {
@@ -110,7 +116,6 @@ bool validateInput(int n, char **arguments) {
     fileLength = std::stoi(arguments[3]);
 
     if (fileLength < 0) return false;
-    if (serverPort < 0 || serverPort > 65535) return false;
+    return !(serverPort < 0 || serverPort > 65535);
 
-    return true;
 }

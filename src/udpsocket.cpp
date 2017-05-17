@@ -30,29 +30,28 @@ packet udpsocket::getPacket() {
     FD_ZERO (&descriptors);
     FD_SET (sock, &descriptors);
     struct timeval tv;
-    tv.tv_sec = 2;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = 1500;
 
     int received = select(sock + 1, &descriptors, NULL, NULL, &tv);
 
     if (received < 0) {
         std::cerr << "There was error while receiving data" << std::endl;
-        return packet(-1, 0);
+        return packet(-1, "", 0, 0);
     }
     if (received == 0) {
-        return packet(0, 0);
+        return packet(0, "", 0, 0);
     }
 
     char buff[2 * FRAME_SIZE];
-    memset(buff, 0, 2 * FRAME_SIZE);
     struct sockaddr_in sender;
     socklen_t sender_len = sizeof(sender);
 
-    int rec = recvfrom(sock, buff, (2 * FRAME_SIZE), 0, (struct sockaddr *) &sender, &sender_len);
+    int rec = (int) recvfrom(sock, buff, (2 * FRAME_SIZE), 0, (struct sockaddr *) &sender, &sender_len);
 
     if (rec < 0) {
         std::cerr << "There was error while receiving data" << std::endl;
-        return packet(-1, 0);
+        return packet(-1, "", 0, 0);
     }
 
     char senderAddr[16];
@@ -61,16 +60,17 @@ packet udpsocket::getPacket() {
     std::string senderAddrS(senderAddr);
 
     if (senderAddrS != address || senderPort != port) {
-        return packet(0, 0);
+        return packet(0, "", 0, 0);
     }
 
-    return packet(1, buff);
+    return packet(1, std::string(buff), 0, 0);
 }
 
 ssize_t udpsocket::sendPacket(int start, int length) {
     std::string msg = generateOutgoing(start, length);
-    unsigned long sent = sendto(sock, msg.c_str(), strlen(msg.c_str()), 0, (struct sockaddr *) &socketAddr,
-                                sizeof(socketAddr));
+    unsigned long sent = (unsigned long) sendto(sock, msg.c_str(), strlen(msg.c_str()), 0,
+                                                (struct sockaddr *) &socketAddr,
+                                                sizeof(socketAddr));
     if (sent != msg.length()) {
         std::cerr << "There was error while sending packet: " + msg << std::endl;
         return -1;

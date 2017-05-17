@@ -13,6 +13,6 @@
 #include <unistd.h>
 #include <errno.h>
 
-#define FRAME_SIZE 200
+#define FRAME_SIZE 1000
 
 #endif //TRANSPORT_UTILS_H

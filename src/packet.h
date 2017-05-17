@@ -7,17 +7,21 @@
 
 class packet {
 private:
+    int start;
+    int length;
     int status;
-    char *data; // should be no more than FRAME_SIZE + '\0'
+    std::string data;
 
 public:
-    packet(int status_, char *data_);
+    packet(int status_, std::string data_, int start_, int length_);
 
-    int getStatus();
+    int getStart() const;
 
-    std::string getDataAsString();
+    int getLength() const;
 
-    char *getData();
+    int getStatus() const;
+
+    std::string getData() const;
 };
 
 
