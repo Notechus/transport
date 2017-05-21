@@ -30,7 +30,7 @@ int udpsocket::run() {
     return 0;
 }
 
-bool udpsocket::getPacket(int start, int length) {
+ReceiverType udpsocket::getPacket(int start, int length) {
     fd_set descriptors;
     FD_ZERO (&descriptors);
     FD_SET (sock, &descriptors);
@@ -42,10 +42,10 @@ bool udpsocket::getPacket(int start, int length) {
 
     if (received < 0) {
         std::cerr << "There was error while receiving data\n";
-        return false;
+        return ReceiverType::Error;
     }
     if (received == 0) {
-        return true;
+        return ReceiverType::NothingReceived;
     }
 
     char buff[2 * FRAME_SIZE];
@@ -55,7 +55,7 @@ bool udpsocket::getPacket(int start, int length) {
     int rec = (int) recvfrom(sock, buff, (2 * FRAME_SIZE), 0, (struct sockaddr *) &sender, &sender_len);
     if (rec < 0) {
         std::cerr << "There was error while receiving data\n";
-        return false;
+        return ReceiverType::Error;
     }
 
     char senderAddr[16];
@@ -66,10 +66,10 @@ bool udpsocket::getPacket(int start, int length) {
         packet p = extractPacket(std::string(buff));
         if (p.getStatus() > 0 && p.getStart() >= start && p.getLength() == length) {
             buffer->addPacket(p);
+            return ReceiverType::CorrectPacket;
         }
     }
-
-    return true;
+    return ReceiverType::IncorrectPacket;
 }
 
 ssize_t udpsocket::sendPacket(int start, int length) {

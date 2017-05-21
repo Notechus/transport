@@ -17,4 +17,8 @@
 #define FRAME_SIZE 1000
 #define TIMEOUT 2000
 
+enum class ReceiverType {
+    CorrectPacket, IncorrectPacket, NothingReceived, Error
+};
+
 #endif //TRANSPORT_UTILS_H

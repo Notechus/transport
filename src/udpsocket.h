@@ -2,6 +2,7 @@
 #ifndef TRANSPORT_UDPSOCKET_H
 #define TRANSPORT_UDPSOCKET_H
 
+#include "utils.h"
 #include "packet.h"
 #include "packetbuffer.h"
 #include <string>
@@ -21,7 +22,7 @@ public:
 
     int run();
 
-    bool getPacket(int start, int length);
+    ReceiverType getPacket(int start, int length);
 
     ssize_t sendPacket(int start, int length);
 

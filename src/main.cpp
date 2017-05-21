@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
     int bytesLeft = fileLength;
     int currentStart = 0;
     int packetQuantity = (int) ceil(((double) fileLength) / FRAME_SIZE);
-    int progress = 1;
+    bool nextFrame = true;
     bool next;
 
     std::ofstream output;
@@ -48,8 +48,11 @@ int main(int argc, char **argv) {
         int currentLength = bytesLeft >= FRAME_SIZE ? FRAME_SIZE : bytesLeft;
         next = false;
 
-//        std::cout << "Receiving " << progress << " of " << packetQuantity << " fragments" << std::endl;
-
+        if (nextFrame) {
+            double progress = (fileLength - bytesLeft) / (fileLength * 1.0) * 100.0;
+            std::cout << progress << "%\n";
+            nextFrame = false;
+        }
         int sent = (int) s.sendPacket(currentStart, currentLength);
         if (sent < 0) {
             std::cerr << "The application will close." << std::endl;
@@ -66,22 +69,27 @@ int main(int argc, char **argv) {
             end = std::chrono::steady_clock::now();
             elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-            bool received = s.getPacket(currentStart, currentLength);
-            if (!received) {
+            auto received = s.getPacket(currentStart, currentLength);
+
+            if (received == ReceiverType::Error) {
                 std::cerr << "The application will close." << std::endl;
                 output.close();
                 delete buff;
                 return EXIT_FAILURE;
-            }
-
-            auto packet = buff->findPacket(currentStart);
-
-            if (processPacket(packet, currentStart, currentLength, output)) {
-                bytesLeft -= FRAME_SIZE;
-                currentStart += FRAME_SIZE;
-                progress++;
+            } else if (received == ReceiverType::CorrectPacket) {
+                auto packet = buff->findPacket(currentStart);
+                if (processPacket(packet, currentStart, currentLength, output)) {
+                    bytesLeft -= FRAME_SIZE;
+                    currentStart += FRAME_SIZE;
+                    nextFrame = true;
+                } else {
+                }
                 next = true;
+            } else if (received == ReceiverType::IncorrectPacket || received == ReceiverType::NothingReceived) {
+                continue;
             }
+
+
         }
     }
     std::cout << "Done.\n";
