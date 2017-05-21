@@ -16,6 +16,8 @@ public:
     void addPacket(packet p);
 
     packet findPacket(int start);
+
+    bool nextAvailable(int number);
 };
 
 

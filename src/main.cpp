@@ -88,8 +88,6 @@ int main(int argc, char **argv) {
             } else if (received == ReceiverType::IncorrectPacket || received == ReceiverType::NothingReceived) {
                 continue;
             }
-
-
         }
     }
     std::cout << "Done.\n";

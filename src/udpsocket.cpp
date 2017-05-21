@@ -8,6 +8,7 @@ packet extractPacket(std::string data);
 udpsocket::udpsocket(packetbuffer *buffer_, std::string address_, int port_)
         : address(address_), port(port_) {
     this->buffer = buffer_;
+    memset(packetFrame, 0, PACKET_LIMIT);
 }
 
 udpsocket::~udpsocket() {
@@ -73,7 +74,7 @@ ReceiverType udpsocket::getPacket(int start, int length) {
 }
 
 ssize_t udpsocket::sendPacket(int start, int length) {
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < PACKET_LIMIT; i++) {
         std::string msg = generateOutgoing(i * start, length);
         unsigned long sent = (unsigned long) sendto(sock, msg.c_str(), strlen(msg.c_str()), 0,
                                                     (struct sockaddr *) &socketAddr,

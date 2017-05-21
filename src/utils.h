@@ -16,6 +16,7 @@
 
 #define FRAME_SIZE 1000
 #define TIMEOUT 2000
+#define PACKET_LIMIT 20
 
 enum class ReceiverType {
     CorrectPacket, IncorrectPacket, NothingReceived, Error

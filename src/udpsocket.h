@@ -13,6 +13,7 @@ private:
     int port;
     int sock;
     sockaddr_in socketAddr;
+    int packetFrame[PACKET_LIMIT];
     packetbuffer *buffer;
 
 public:

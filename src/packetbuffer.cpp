@@ -18,3 +18,9 @@ packet packetbuffer::findPacket(int start) {
         return packet(-1, "", 0, 0);
     }
 }
+
+bool packetbuffer::nextAvailable(int number) {
+    auto found = packets.find(number);
+
+    return found != packets.end();
+}
