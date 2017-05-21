@@ -7,10 +7,11 @@
 
 class packet {
 private:
-    int start;
-    int length;
     int status;
     std::string data;
+    int start;
+    int length;
+
 
 public:
     packet(int status_, std::string data_, int start_, int length_);
