@@ -73,16 +73,17 @@ ReceiverType udpsocket::getPacket(int start, int length) {
 }
 
 ssize_t udpsocket::sendPacket(int start, int length) {
-    std::string msg = generateOutgoing(start, length);
-    unsigned long sent = (unsigned long) sendto(sock, msg.c_str(), strlen(msg.c_str()), 0,
-                                                (struct sockaddr *) &socketAddr,
-                                                sizeof(socketAddr));
-    if (sent != msg.length()) {
-        std::cerr << "There was error while sending packet: " + msg << std::endl;
-        return -1;
+    for (int i = 0; i < 20; i++) {
+        std::string msg = generateOutgoing(i * start, length);
+        unsigned long sent = (unsigned long) sendto(sock, msg.c_str(), strlen(msg.c_str()), 0,
+                                                    (struct sockaddr *) &socketAddr,
+                                                    sizeof(socketAddr));
+        if (sent != msg.length()) {
+            std::cerr << "There was error while sending packet: " + msg << std::endl;
+            return -1;
+        }
     }
-
-    return sent;
+    return 1;
 }
 
 std::string udpsocket::generateOutgoing(int start, int length) {
