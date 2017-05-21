@@ -1,10 +1,13 @@
 //Sebastian Paulus 266446
 #include "udpsocket.h"
+#include <string.h>
+#include <stdlib.h>
 
 packet extractPacket(std::string data);
 
 udpsocket::udpsocket(packetbuffer *buffer_, std::string address_, int port_)
-        : buffer(buffer_), address(address_), port(port_) {
+        : address(address_), port(port_) {
+    this->buffer = buffer_;
 }
 
 udpsocket::~udpsocket() {
