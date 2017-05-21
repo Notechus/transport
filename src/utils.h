@@ -6,13 +6,15 @@
 #include <string>
 #include <cmath>
 #include <fstream>
+#include <chrono>
+#include <map>
 
-// Network stuff
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
 
 #define FRAME_SIZE 1000
+#define TIMEOUT 2000
 
 #endif //TRANSPORT_UTILS_H

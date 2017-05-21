@@ -1,8 +1,10 @@
 //Sebastian Paulus 266446
 #include "udpsocket.h"
 
-udpsocket::udpsocket(std::string address_, int port_)
-        : address(address_), port(port_) {
+packet extractPacket(std::string data);
+
+udpsocket::udpsocket(packetbuffer *buffer_, std::string address_, int port_)
+        : buffer(buffer_), address(address_), port(port_) {
 }
 
 udpsocket::~udpsocket() {
@@ -13,7 +15,7 @@ int udpsocket::run() {
     sock = socket(AF_INET, SOCK_DGRAM, 0);
 
     if (sock < 0) {
-        std::cerr << "Error during socket creation" << std::endl;
+        std::cerr << "Error during socket creation\n";
         return -1;
     }
 
@@ -25,22 +27,22 @@ int udpsocket::run() {
     return 0;
 }
 
-packet udpsocket::getPacket() {
+bool udpsocket::getPacket(int start, int length) {
     fd_set descriptors;
     FD_ZERO (&descriptors);
     FD_SET (sock, &descriptors);
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 1500;
+    tv.tv_usec = 1000;
 
     int received = select(sock + 1, &descriptors, NULL, NULL, &tv);
 
     if (received < 0) {
-        std::cerr << "There was error while receiving data" << std::endl;
-        return packet(-1, "", 0, 0);
+        std::cerr << "There was error while receiving data\n";
+        return false;
     }
     if (received == 0) {
-        return packet(0, "", 0, 0);
+        return true;
     }
 
     char buff[2 * FRAME_SIZE];
@@ -48,22 +50,23 @@ packet udpsocket::getPacket() {
     socklen_t sender_len = sizeof(sender);
 
     int rec = (int) recvfrom(sock, buff, (2 * FRAME_SIZE), 0, (struct sockaddr *) &sender, &sender_len);
-
     if (rec < 0) {
-        std::cerr << "There was error while receiving data" << std::endl;
-        return packet(-1, "", 0, 0);
+        std::cerr << "There was error while receiving data\n";
+        return false;
     }
 
     char senderAddr[16];
     int senderPort = ntohs(sender.sin_port);
     inet_ntop(AF_INET, &(sender.sin_addr), senderAddr, sizeof(senderAddr));
     std::string senderAddrS(senderAddr);
-
-    if (senderAddrS != address || senderPort != port) {
-        return packet(0, "", 0, 0);
+    if (senderAddrS == address && senderPort == port) {
+        packet p = extractPacket(std::string(buff));
+        if (p.getStatus() > 0 && p.getStart() >= start && p.getLength() == length) {
+            buffer->addPacket(p);
+        }
     }
 
-    return packet(1, std::string(buff), 0, 0);
+    return true;
 }
 
 ssize_t udpsocket::sendPacket(int start, int length) {
@@ -81,4 +84,23 @@ ssize_t udpsocket::sendPacket(int start, int length) {
 
 std::string udpsocket::generateOutgoing(int start, int length) {
     return "GET " + std::to_string(start) + " " + std::to_string(length) + "\n";
+}
+
+packet extractPacket(std::string data) {
+    unsigned long first = data.find_first_of('\n');
+    if (first > 0) {
+        std::string dataHeader = data.substr(5, first - 5); // header minus 'DATA '
+        std::string dataContent = data.substr(first + 1, data.length() - 1); // data here if valid
+        unsigned long space = dataHeader.find_first_of(' ');
+        if (space > 0) {
+            try {
+                int packetStart = std::stoi(dataHeader.substr(0, space));
+                int packetLength = std::stoi(dataHeader.substr(space + 1, first));
+                return packet(1, dataContent, packetStart, packetLength);
+            } catch (...) {
+                return packet(-1, "", 0, 0);
+            }
+        }
+    }
+    return packet(-1, "", 0, 0);
 }

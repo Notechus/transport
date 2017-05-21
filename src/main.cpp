@@ -1,14 +1,13 @@
 //Sebastian Paulus 266446
 #include "utils.h"
 #include "udpsocket.h"
+#include "packetbuffer.h"
 
 bool validateInput(int n, char **arguments);
 
 int processPacket(const packet &p, int currentStart, int currentLength, std::ofstream &file);
 
-int validatePacket(const packet &p, int currentStart, int currentLength, std::ofstream &file);
-
-void writeToFile(const std::string &, std::ofstream &file);
+void writeToFile(const packet &p, std::ofstream &file);
 
 int serverPort;
 std::string outputFileName;
@@ -26,55 +25,78 @@ int main(int argc, char **argv) {
     int currentStart = 0;
     int packetQuantity = (int) ceil(((double) fileLength) / FRAME_SIZE);
     int progress = 1;
+    bool next;
 
-    udpsocket s(serverAddr, serverPort);
+    std::ofstream output;
+//    output.open(outputFileName, std::ios::binary | std::ios::out | std::ios::ate | std::ios::app);
+    output.open(outputFileName);
+    packetbuffer *buff = new packetbuffer();
+    udpsocket s(buff, serverAddr, serverPort);
+
     if (s.run() < 0) {
         std::cerr << "The application will close." << std::endl;
+        output.close();
+        delete buff;
         return EXIT_FAILURE;
     }
 
-    std::ofstream output;
+    std::cout << "Receiving data.\n";
 
-    output.open(outputFileName, std::ios::binary | std::ios::out | std::ios::ate | std::ios::app);
+    std::chrono::steady_clock::time_point start, end;
 
     while (bytesLeft > 0) {
         int currentLength = bytesLeft >= FRAME_SIZE ? FRAME_SIZE : bytesLeft;
-        int next = 0;
+        next = false;
 
-        std::cout << "Receiving " << progress << " of " << packetQuantity << " fragments" << std::endl;
+//        std::cout << "Receiving " << progress << " of " << packetQuantity << " fragments" << std::endl;
 
         int sent = (int) s.sendPacket(currentStart, currentLength);
         if (sent < 0) {
             std::cerr << "The application will close." << std::endl;
+            output.close();
+            delete buff;
             return EXIT_FAILURE;
         }
+        start = std::chrono::steady_clock::now();
+        end = std::chrono::steady_clock::now();
 
-        while (!next) {
-            packet p = s.getPacket();
-            if (p.getStatus() < 0) {
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        while (!next && (elapsed.count() < TIMEOUT)) {
+            end = std::chrono::steady_clock::now();
+            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+            bool received = s.getPacket(currentStart, currentLength);
+            if (!received) {
                 std::cerr << "The application will close." << std::endl;
                 output.close();
+                delete buff;
                 return EXIT_FAILURE;
             }
 
-            if (processPacket(p, currentStart, currentLength, output)) {
+            auto packet = buff->findPacket(currentStart);
+
+            if (processPacket(packet, currentStart, currentLength, output)) {
                 bytesLeft -= FRAME_SIZE;
                 currentStart += FRAME_SIZE;
-                next = 1;
+                progress++;
+                next = true;
             }
         }
-        progress++;
     }
     std::cout << "Done.\n";
+
+    delete buff;
     output.close();
 
     return 0;
 }
 
 int processPacket(const packet &p, int currentStart, int currentLength, std::ofstream &file) {
-    // response is DATA start length \n
     if (p.getStatus() > 0) {
-        if (validatePacket(p, currentStart, currentLength, file)) {
+        std::string packetData = p.getData();
+        if (p.getStart() == currentStart && p.getLength() == currentLength) {
+            writeToFile(p, file);
             return 1;
         }
     }
@@ -82,30 +104,13 @@ int processPacket(const packet &p, int currentStart, int currentLength, std::ofs
     return 0;
 }
 
-void writeToFile(const std::string &data, std::ofstream &file) {
+void writeToFile(const packet &p, std::ofstream &file) {
     if (file.is_open()) {
-        file << data;
+        file.write(p.getData().c_str(), p.getLength());
+    } else {
+        std::cout << "There was an error while writing to file. Please try again.\n";
+        std::terminate();
     }
-}
-
-int validatePacket(const packet &p, int currentStart, int currentLength, std::ofstream &file) {
-    std::string packetData = p.getData();
-    unsigned long first = packetData.find_first_of('\n');
-    if (first > 0) {
-        std::string dataHeader = packetData.substr(5, first - 5); // header minus 'DATA '
-        std::string dataContent = packetData.substr(first + 1, packetData.length() - 1); // data here if valid
-        unsigned long space = dataHeader.find_first_of(' ');
-        if (space > 0) {
-            int packetStart = std::stoi(dataHeader.substr(0, space));
-            int packetLength = std::stoi(dataHeader.substr(space + 1, first));
-            if (packetStart == currentStart && packetLength == currentLength) {
-                writeToFile(dataContent, file);
-                return 1;
-            }
-        }
-    }
-
-    return 0;
 }
 
 bool validateInput(int n, char **arguments) {
@@ -117,5 +122,4 @@ bool validateInput(int n, char **arguments) {
 
     if (fileLength < 0) return false;
     return !(serverPort < 0 || serverPort > 65535);
-
 }
