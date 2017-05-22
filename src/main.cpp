@@ -26,7 +26,6 @@ int main(int argc, char **argv) {
     bool next;
 
     std::ofstream output;
-//    output.open(outputFileName, std::ios::binary | std::ios::out | std::ios::ate | std::ios::app);
     output.open(outputFileName);
     packetbuffer *buff = new packetbuffer();
     int minimum = std::min(PACKET_LIMIT, (fileLength / FRAME_SIZE));
@@ -52,7 +51,7 @@ int main(int argc, char **argv) {
             std::cout << progress << "%\n";
             nextFrame = false;
         }
-        int sent = (int) s.sendPacket(currentStart, currentLength);
+        int sent = (int) s.sendPacket(currentStart, currentLength, (bytesLeft / currentLength));
         if (sent < 0) {
             std::cerr << "The application will close." << std::endl;
             output.close();

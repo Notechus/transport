@@ -87,7 +87,8 @@ SocketStatus udpsocket::getPacket(int start, int length) {
     return SocketStatus::Normal;
 }
 
-ssize_t udpsocket::sendPacket(int start, int length) {
+ssize_t udpsocket::sendPacket(int start, int length, int bound) {
+    this->upperBound = std::min(bound, PACKET_LIMIT);
     for (int i = 0; i < upperBound; i++) {
         int idx = (frameIdx + i) % upperBound;
         if (!packetFrame[idx].received || packetTimedOut(idx)) {

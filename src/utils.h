@@ -17,7 +17,7 @@
 
 #define FRAME_SIZE 1000
 #define TIMEOUT 1000
-#define PACKET_LIMIT 1000
+#define PACKET_LIMIT 100
 
 enum class SocketStatus {
     MoveFrame, Normal, Error, NothingReceived

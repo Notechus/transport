@@ -27,7 +27,7 @@ public:
 
     SocketStatus getPacket(int start, int length);
 
-    ssize_t sendPacket(int start, int length);
+    ssize_t sendPacket(int start, int length, int bound);
 
     std::string generateOutgoing(int start, int length);
 
