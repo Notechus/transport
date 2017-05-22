@@ -23,7 +23,6 @@ int main(int argc, char **argv) {
     }
     int bytesLeft = fileLength;
     int currentStart = 0;
-    int packetQuantity = (int) ceil(((double) fileLength) / FRAME_SIZE);
     bool nextFrame = true;
     bool next;
 
@@ -71,21 +70,26 @@ int main(int argc, char **argv) {
 
             auto received = s.getPacket(currentStart, currentLength);
 
-            if (received == ReceiverType::Error) {
+            if (received == SocketStatus::Error) {
                 std::cerr << "The application will close." << std::endl;
                 output.close();
                 delete buff;
                 return EXIT_FAILURE;
-            } else if (received == ReceiverType::CorrectPacket) {
-                auto packet = buff->findPacket(currentStart);
-                if (processPacket(packet, currentStart, currentLength, output)) {
-                    bytesLeft -= FRAME_SIZE;
-                    currentStart += FRAME_SIZE;
-                    nextFrame = true;
-                } else {
-                }
+            } else if (received == SocketStatus::MoveFrame || received == SocketStatus::Normal) {
                 next = true;
-            } else if (received == ReceiverType::IncorrectPacket || received == ReceiverType::NothingReceived) {
+                if (received == SocketStatus::MoveFrame) {
+                    nextFrame = true;
+                }
+                int timesMoved = s.moveFrame();
+                for (int i = 0; i < timesMoved; i++) {
+                    auto packet = buff->findPacket(currentStart);
+                    if (processPacket(packet, currentStart, currentLength, output)) {
+                        bytesLeft -= FRAME_SIZE;
+                        currentStart += FRAME_SIZE;
+                        currentLength = bytesLeft >= FRAME_SIZE ? FRAME_SIZE : bytesLeft;
+                    }
+                }
+            } else if (received == SocketStatus::NothingReceived) {
                 continue;
             }
         }

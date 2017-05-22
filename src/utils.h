@@ -16,10 +16,20 @@
 
 #define FRAME_SIZE 1000
 #define TIMEOUT 2000
-#define PACKET_LIMIT 20
+#define PACKET_LIMIT 5
 
-enum class ReceiverType {
-    CorrectPacket, IncorrectPacket, NothingReceived, Error
+enum class SocketStatus {
+    MoveFrame, Normal, Error, NothingReceived
+};
+
+struct packetack {
+    std::chrono::steady_clock::time_point time_sent;
+    bool received;
+
+    packetack() {
+        received = false;
+        time_sent = std::chrono::steady_clock::now();
+    }
 };
 
 #endif //TRANSPORT_UTILS_H

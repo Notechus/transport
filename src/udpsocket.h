@@ -13,8 +13,9 @@ private:
     int port;
     int sock;
     sockaddr_in socketAddr;
-    int packetFrame[PACKET_LIMIT];
+    packetack packetFrame[PACKET_LIMIT];
     packetbuffer *buffer;
+    int frameIdx;
 
 public:
     udpsocket(packetbuffer *buffer_, std::string address_, int port_);
@@ -23,11 +24,15 @@ public:
 
     int run();
 
-    ReceiverType getPacket(int start, int length);
+    SocketStatus getPacket(int start, int length);
 
     ssize_t sendPacket(int start, int length);
 
     std::string generateOutgoing(int start, int length);
+
+    bool packetTimedOut(int idx);
+
+    int moveFrame();
 };
 
 
