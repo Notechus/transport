@@ -2,7 +2,6 @@
 #ifndef TRANSPORT_PACKET_H
 #define TRANSPORT_PACKET_H
 
-
 #include "utils.h"
 
 class packet {

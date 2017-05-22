@@ -8,6 +8,7 @@
 #include <fstream>
 #include <chrono>
 #include <map>
+#include <algorithm>
 
 #include <netinet/ip.h>
 #include <arpa/inet.h>
@@ -15,8 +16,8 @@
 #include <errno.h>
 
 #define FRAME_SIZE 1000
-#define TIMEOUT 2000
-#define PACKET_LIMIT 5
+#define TIMEOUT 1000
+#define PACKET_LIMIT 1000
 
 enum class SocketStatus {
     MoveFrame, Normal, Error, NothingReceived

@@ -16,9 +16,10 @@ private:
     packetack packetFrame[PACKET_LIMIT];
     packetbuffer *buffer;
     int frameIdx;
+    int upperBound = PACKET_LIMIT;
 
 public:
-    udpsocket(packetbuffer *buffer_, std::string address_, int port_);
+    udpsocket(packetbuffer *buffer_, std::string address_, int port_, int upper_);
 
     ~udpsocket();
 

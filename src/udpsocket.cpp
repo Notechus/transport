@@ -1,14 +1,16 @@
 //Sebastian Paulus 266446
 #include "udpsocket.h"
+#include <algorithm>
 #include <string.h>
 #include <stdlib.h>
 
 packet extractPacket(std::string data);
 
-udpsocket::udpsocket(packetbuffer *buffer_, std::string address_, int port_)
+udpsocket::udpsocket(packetbuffer *buffer_, std::string address_, int port_, int upper_)
         : address(address_), port(port_) {
     this->buffer = buffer_;
     this->frameIdx = 0;
+    this->upperBound = upper_;
 }
 
 udpsocket::~udpsocket() {
@@ -67,13 +69,13 @@ SocketStatus udpsocket::getPacket(int start, int length) {
         packet p = extractPacket(std::string(buff));
         if (p.getStatus() > 0 && p.getStart() >= start && p.getLength() == length) {
             if (p.getStart() == start && !packetFrame[frameIdx].received) {
-                buffer->addPacket(p);
                 packetFrame[frameIdx].received = true;
+                buffer->addPacket(p);
 
                 return SocketStatus::MoveFrame;
             } else {
                 int idx = (p.getStart() - start) / length;
-                if (!packetFrame[idx].received) {
+                if (idx >= 0 && idx < upperBound && !packetFrame[idx].received) {
                     packetFrame[idx].received = true;
                     buffer->addPacket(p);
                 }
@@ -86,8 +88,8 @@ SocketStatus udpsocket::getPacket(int start, int length) {
 }
 
 ssize_t udpsocket::sendPacket(int start, int length) {
-    for (int i = 0; i < PACKET_LIMIT; i++) {
-        int idx = (frameIdx + i) % PACKET_LIMIT;
+    for (int i = 0; i < upperBound; i++) {
+        int idx = (frameIdx + i) % upperBound;
         if (!packetFrame[idx].received || packetTimedOut(idx)) {
             std::string msg = generateOutgoing((start + i * length), length);
             unsigned long sent = (unsigned long) sendto(sock, msg.c_str(), strlen(msg.c_str()), 0,
@@ -118,7 +120,7 @@ int udpsocket::moveFrame() {
     int framesMoved = 0;
     while (packetFrame[frameIdx].received) {
         packetFrame[frameIdx].received = false;
-        frameIdx = (frameIdx + 1) % PACKET_LIMIT;
+        frameIdx = (frameIdx + 1) % upperBound;
         framesMoved++;
     }
     return framesMoved;

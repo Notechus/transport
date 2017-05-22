@@ -1,7 +1,6 @@
 //Sebastian Paulus 266446
 #include "utils.h"
 #include "udpsocket.h"
-#include "packetbuffer.h"
 
 bool validateInput(int n, char **arguments);
 
@@ -30,7 +29,8 @@ int main(int argc, char **argv) {
 //    output.open(outputFileName, std::ios::binary | std::ios::out | std::ios::ate | std::ios::app);
     output.open(outputFileName);
     packetbuffer *buff = new packetbuffer();
-    udpsocket s(buff, serverAddr, serverPort);
+    int minimum = std::min(PACKET_LIMIT, (fileLength / FRAME_SIZE));
+    udpsocket s(buff, serverAddr, serverPort, minimum);
 
     if (s.run() < 0) {
         std::cerr << "The application will close." << std::endl;
