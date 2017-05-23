@@ -16,7 +16,7 @@
 #include <errno.h>
 
 #define FRAME_SIZE 1000
-#define TIMEOUT 1000
+#define TIMEOUT 10
 #define PACKET_LIMIT 100
 
 enum class SocketStatus {
