@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
             } else if (received == SocketStatus::MoveFrame || received == SocketStatus::Normal) {
                 int timesMoved = s.moveFrame();
                 next = true;
-                while (timesMoved > 0 || buff->nextAvailable(currentStart)) {
+                while (timesMoved > 0 && buff->nextAvailable(currentStart)) {
                     auto packet = buff->findPacket(currentStart);
                     if (processPacket(packet, currentStart, currentLength, output)) {
                         bytesLeft -= DATA_SIZE;
