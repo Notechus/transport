@@ -7,13 +7,13 @@
 class packet {
 private:
     int status;
-    std::string data;
+    std::vector<char> data;
     int start;
     int length;
 
 
 public:
-    packet(int status_, std::string data_, int start_, int length_);
+    packet(int status_, std::vector<char> data_, int start_, int length_);
 
     int getStart() const;
 
@@ -21,7 +21,7 @@ public:
 
     int getStatus() const;
 
-    std::string getData() const;
+    const std::vector<char> &getData() const;
 };
 
 

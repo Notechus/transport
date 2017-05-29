@@ -9,27 +9,25 @@
 #include <chrono>
 #include <map>
 #include <algorithm>
+#include <vector>
 
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
 
-#define FRAME_SIZE 1000
-#define TIMEOUT 10
-#define PACKET_LIMIT 100
+#define DATA_SIZE 1000
+#define FRAME_SIZE 150
 
 enum class SocketStatus {
     MoveFrame, Normal, Error, NothingReceived
 };
 
 struct packetack {
-    std::chrono::steady_clock::time_point time_sent;
     bool received;
 
     packetack() {
         received = false;
-        time_sent = std::chrono::steady_clock::now();
     }
 };
 

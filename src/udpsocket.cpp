@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-packet extractPacket(std::string data);
+packet extractPacket(char *data, int length);
 
 udpsocket::udpsocket(packetbuffer *buffer_, std::string address_, int port_, int upper_)
         : address(address_), port(port_) {
@@ -51,11 +51,11 @@ SocketStatus udpsocket::getPacket(int start, int length) {
         return SocketStatus::NothingReceived;
     }
 
-    char buff[2 * FRAME_SIZE];
+    char buff[2 * DATA_SIZE];
     struct sockaddr_in sender;
     socklen_t sender_len = sizeof(sender);
 
-    int rec = (int) recvfrom(sock, buff, (2 * FRAME_SIZE), 0, (struct sockaddr *) &sender, &sender_len);
+    int rec = (int) recvfrom(sock, buff, (2 * DATA_SIZE), 0, (struct sockaddr *) &sender, &sender_len);
     if (rec < 0) {
         std::cerr << "There was error while receiving data\n";
         return SocketStatus::Error;
@@ -66,7 +66,7 @@ SocketStatus udpsocket::getPacket(int start, int length) {
     inet_ntop(AF_INET, &(sender.sin_addr), senderAddr, sizeof(senderAddr));
     std::string senderAddrS(senderAddr);
     if (senderAddrS == address && senderPort == port) {
-        packet p = extractPacket(std::string(buff));
+        packet p = extractPacket(buff, rec);
         if (p.getStatus() > 0 && p.getStart() >= start && p.getLength() == length) {
             if (p.getStart() == start && !packetFrame[frameIdx].received) {
                 packetFrame[frameIdx].received = true;
@@ -88,17 +88,17 @@ SocketStatus udpsocket::getPacket(int start, int length) {
 }
 
 ssize_t udpsocket::sendPacket(int start, int length, int bound) {
-    this->upperBound = std::min(bound, PACKET_LIMIT);
+    this->upperBound = std::min(bound, FRAME_SIZE);
     for (int i = 0; i < upperBound; i++) {
         int idx = (frameIdx + i) % upperBound;
-        if (!packetFrame[idx].received || packetTimedOut(idx)) {
+        if (!packetFrame[idx].received) {
             std::string msg = generateOutgoing((start + i * length), length);
             unsigned long sent = (unsigned long) sendto(sock, msg.c_str(), strlen(msg.c_str()), 0,
                                                         (struct sockaddr *) &socketAddr,
                                                         sizeof(socketAddr));
-            packetFrame[idx].time_sent = std::chrono::steady_clock::now();
             if (sent != msg.length()) {
                 std::cerr << "There was error while sending packet: " + msg << std::endl;
+                std::cerr << strerror(errno) << std::endl;
                 return -1;
             }
         }
@@ -108,13 +108,6 @@ ssize_t udpsocket::sendPacket(int start, int length, int bound) {
 
 std::string udpsocket::generateOutgoing(int start, int length) {
     return "GET " + std::to_string(start) + " " + std::to_string(length) + "\n";
-}
-
-bool udpsocket::packetTimedOut(int idx) {
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - packetFrame[idx].time_sent);
-
-    return elapsed.count() >= TIMEOUT;
 }
 
 int udpsocket::moveFrame() {
@@ -127,21 +120,35 @@ int udpsocket::moveFrame() {
     return framesMoved;
 }
 
-packet extractPacket(std::string data) {
-    unsigned long first = data.find_first_of('\n');
-    if (first > 0) {
-        std::string dataHeader = data.substr(5, first - 5);
-        std::string dataContent = data.substr(first + 1, data.length() - 1);
+packet extractPacket(char *data, int length) {
+    unsigned i = 0;
+    char header[50];
+    memset(header, 0, 50);
+    while (data[i] != '\n' && i < length) {
+        if (i < 50) {
+            header[i] = data[i];
+        }
+        i++;
+    }
+    std::string head(header);
+    std::vector<char> v;
+    if (i > 0 && i < DATA_SIZE) {
+        std::string dataHeader = head.substr(5, i - 1);
+
         unsigned long space = dataHeader.find_first_of(' ');
         if (space > 0) {
             try {
                 int packetStart = std::stoi(dataHeader.substr(0, space));
-                int packetLength = std::stoi(dataHeader.substr(space + 1, first));
-                return packet(1, dataContent, packetStart, packetLength);
+                int packetLength = std::stoi(dataHeader.substr(space + 1, i - 1));
+                for (int j = i; j < length; j++) {
+                    char t = data[j];
+                    v.push_back(t);
+                }
+                return packet(1, v, packetStart, packetLength);
             } catch (...) {
-                return packet(-1, "", 0, 0);
+                return packet(-1, v, 0, 0);
             }
         }
     }
-    return packet(-1, "", 0, 0);
+    return packet(-1, v, 0, 0);
 }

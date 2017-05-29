@@ -22,13 +22,12 @@ int main(int argc, char **argv) {
     }
     int bytesLeft = fileLength;
     int currentStart = 0;
-    bool nextFrame = true;
     bool next;
 
     std::ofstream output;
     output.open(outputFileName);
     packetbuffer *buff = new packetbuffer();
-    int minimum = std::min(PACKET_LIMIT, (fileLength / FRAME_SIZE));
+    int minimum = std::min(FRAME_SIZE, (fileLength / DATA_SIZE));
     udpsocket s(buff, serverAddr, serverPort, minimum);
 
     if (s.run() < 0) {
@@ -43,14 +42,8 @@ int main(int argc, char **argv) {
     std::chrono::steady_clock::time_point start, end;
 
     while (bytesLeft > 0) {
-        int currentLength = bytesLeft >= FRAME_SIZE ? FRAME_SIZE : bytesLeft;
+        int currentLength = bytesLeft >= DATA_SIZE ? DATA_SIZE : bytesLeft;
         next = false;
-
-        if (nextFrame) {
-            double progress = (fileLength - bytesLeft) / (fileLength * 1.0) * 100.0;
-            std::cout << progress << "%\n";
-            nextFrame = false;
-        }
         int sent = (int) s.sendPacket(currentStart, currentLength, (bytesLeft / currentLength));
         if (sent < 0) {
             std::cerr << "The application will close." << std::endl;
@@ -58,15 +51,8 @@ int main(int argc, char **argv) {
             delete buff;
             return EXIT_FAILURE;
         }
-        start = std::chrono::steady_clock::now();
-        end = std::chrono::steady_clock::now();
 
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-        while (!next && (elapsed.count() < TIMEOUT)) {
-            end = std::chrono::steady_clock::now();
-            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
+        while (!next) {
             auto received = s.getPacket(currentStart, currentLength);
 
             if (received == SocketStatus::Error) {
@@ -76,16 +62,13 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
             } else if (received == SocketStatus::MoveFrame || received == SocketStatus::Normal) {
                 next = true;
-                if (received == SocketStatus::MoveFrame) {
-                    nextFrame = true;
-                }
                 int timesMoved = s.moveFrame();
                 for (int i = 0; i < timesMoved; i++) {
                     auto packet = buff->findPacket(currentStart);
                     if (processPacket(packet, currentStart, currentLength, output)) {
-                        bytesLeft -= FRAME_SIZE;
-                        currentStart += FRAME_SIZE;
-                        currentLength = bytesLeft >= FRAME_SIZE ? FRAME_SIZE : bytesLeft;
+                        bytesLeft -= DATA_SIZE;
+                        currentStart += DATA_SIZE;
+                        currentLength = bytesLeft >= DATA_SIZE ? DATA_SIZE : bytesLeft;
                     }
                 }
             } else if (received == SocketStatus::NothingReceived) {
@@ -93,7 +76,6 @@ int main(int argc, char **argv) {
             }
         }
     }
-    std::cout << "Done.\n";
 
     delete buff;
     output.close();
@@ -103,7 +85,6 @@ int main(int argc, char **argv) {
 
 int processPacket(const packet &p, int currentStart, int currentLength, std::ofstream &file) {
     if (p.getStatus() > 0) {
-        std::string packetData = p.getData();
         if (p.getStart() == currentStart && p.getLength() == currentLength) {
             writeToFile(p, file);
             return 1;
@@ -115,7 +96,7 @@ int processPacket(const packet &p, int currentStart, int currentLength, std::ofs
 
 void writeToFile(const packet &p, std::ofstream &file) {
     if (file.is_open()) {
-        file.write(p.getData().c_str(), p.getLength());
+        file.write(p.getData().data(), p.getLength());
     } else {
         std::cout << "There was an error while writing to file. Please try again.\n";
         std::terminate();

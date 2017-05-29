@@ -13,10 +13,10 @@ private:
     int port;
     int sock;
     sockaddr_in socketAddr;
-    packetack packetFrame[PACKET_LIMIT];
+    packetack packetFrame[FRAME_SIZE];
     packetbuffer *buffer;
     int frameIdx;
-    int upperBound = PACKET_LIMIT;
+    int upperBound = FRAME_SIZE;
 
 public:
     udpsocket(packetbuffer *buffer_, std::string address_, int port_, int upper_);
@@ -30,8 +30,6 @@ public:
     ssize_t sendPacket(int start, int length, int bound);
 
     std::string generateOutgoing(int start, int length);
-
-    bool packetTimedOut(int idx);
 
     int moveFrame();
 };

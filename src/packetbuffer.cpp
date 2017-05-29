@@ -15,7 +15,7 @@ packet packetbuffer::findPacket(int start) {
     if (found != packets.end()) {
         return found->second;
     } else {
-        return packet(-1, "", 0, 0);
+        return packet(-1, std::vector<char>(), 0, 0);
     }
 }
 
