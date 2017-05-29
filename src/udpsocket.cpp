@@ -140,9 +140,8 @@ packet extractPacket(char *data, int length) {
             try {
                 int packetStart = std::stoi(dataHeader.substr(0, space));
                 int packetLength = std::stoi(dataHeader.substr(space + 1, i - 1));
-                for (int j = i; j < length; j++) {
-                    char t = data[j];
-                    v.push_back(t);
+                for (int j = i + 1; j < length; j++) {
+                    v.push_back(data[j]);
                 }
                 return packet(1, v, packetStart, packetLength);
             } catch (...) {

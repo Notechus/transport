@@ -61,15 +61,16 @@ int main(int argc, char **argv) {
                 delete buff;
                 return EXIT_FAILURE;
             } else if (received == SocketStatus::MoveFrame || received == SocketStatus::Normal) {
-                next = true;
                 int timesMoved = s.moveFrame();
-                for (int i = 0; i < timesMoved; i++) {
+                next = true;
+                while (timesMoved > 0 || buff->nextAvailable(currentStart)) {
                     auto packet = buff->findPacket(currentStart);
                     if (processPacket(packet, currentStart, currentLength, output)) {
                         bytesLeft -= DATA_SIZE;
-                        currentStart += DATA_SIZE;
                         currentLength = bytesLeft >= DATA_SIZE ? DATA_SIZE : bytesLeft;
+                        currentStart += currentLength;
                     }
+                    timesMoved--;
                 }
             } else if (received == SocketStatus::NothingReceived) {
                 continue;
